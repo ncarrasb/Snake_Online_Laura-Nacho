@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SNAKE ONLINE</title>
+
+  <style>
+    :root{
+      --size: 500px;
+      --cell: 20px;
+    }
+    *{ box-sizing: border-box; }
+    body{
+      font-family: system-ui, Arial, sans-serif;
+      display:flex; flex-direction:column; align-items:center; gap:10px;
+      margin:20px; background:#f6f6f6; color:#222;
+    }
+    h1{ margin:0 0 8px 0; font-size:18px; }
+    #estado{ font-size:14px; color:#555; min-height:1.2em; }
+
+    /*Conexión*/
+    .connect-bar{
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+      background:#fff; border:1px solid #ddd; border-radius:10px; padding:8px 10px;
+    }
+    .connect-bar input[type="text"]{
+      width:360px; max-width:70vw; padding:8px 10px; border:1px solid #ccc; border-radius:8px;
+      font-family:monospace; font-size:12px;
+    }
+    .connect-bar button{
+      padding:8px 12px; border:1px solid #0a7; background:#12c993; color:#fff;
+      border-radius:10px; cursor:pointer; font-weight:600;
+    }
+    .connect-bar button[disabled]{ opacity:.6; cursor:not-allowed; }
+
+    #contenedor{
+      position:relative; width:var(--size); height:var(--size);
+      background:#111; border:2px solid #333; border-radius:8px; overflow:hidden;
+    }
+    /*Cuadrícula*/
+    .grid{
+      position:absolute; inset:0; background-image:
+        linear-gradient(to right, rgba(255,255,255,.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,.04) 1px, transparent 1px);
+      background-size: 20px 20px; pointer-events:none;
+    }
+
+    /*JUGADOR*/
+    .jugador{
+      position:absolute; width:20px; height:20px; background:#32cd32;
+      border-radius:4px; display:flex; align-items:center; justify-content:center;
+      color:#fff; font-weight:700; font-size:12px; user-select:none;
+      text-shadow:0 1px 2px rgba(0,0,0,.6);
+    }
+    .yo{ background:#00cc66; box-shadow:0 0 8px rgba(0,255,120,.9); }
+
+    /*FRUTA*/
+    #fruta{
+      position:absolute; width:20px; height:20px;
+      background:#e74c3c; border-radius:4px;
+      box-shadow:0 0 8px rgba(231,76,60,.8);
+    }
+
+    /*Marcador simple*/
+    #marcador{
+      display:flex; flex-wrap:wrap; gap:6px; max-width:var(--size);
+      font-size:13px; color:#333;
+    }
+    .chip{
+      background:#fff; border:1px solid #ddd; border-radius:999px;
+      padding:4px 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Snake Online</h1>
+
+  <!--Barra de conexión-->
+  <div class="connect-bar">
+    <label for="ws-url" style="font-weight:600;">Servidor:</label>
+    <input id="ws-url" type="text" spellcheck="false" />
+    <button id="btn-connect">Conectar</button>
+  </div>
+
+  <div id="estado"></div>
+
+  <div id="contenedor" aria-label="tablero">
+    <div class="grid" aria-hidden="true"></div>
+    <div id="fruta" hidden></div>
+  </div>
+
+  <div id="marcador" title="Puntuaciones"></div>
+
+  <script>
+    const SIZE = 500;
+    const CELL = 20;
+    const MAX = SIZE - CELL;
+
+    //Estado Cliente
+    const contenedor = document.getElementById("contenedor");
+    const frutaDiv = document.getElementById("fruta");
+    const estado = document.getElementById("estado");
+    const marcador = document.getElementById("marcador");
+
+    const urlInput = document.getElementById("ws-url");
+    const btnConnect = document.getElementById("btn-connect");
+
+    //Prefijar URL por defecto
+    const defaultHost = location.hostname || "localhost";
+    const defaultUrl = (location.protocol === "https:" ? "wss://" : "ws://") + defaultHost + ":8080";
+    urlInput.value = defaultUrl;
+
+    //jugadores:
+    let jugadores = {};
+    let miId = null;
+    let fruta = null;
+    let socket = null;
+
+    function setUIConnecting(state){
+      btnConnect.disabled = state;
+      urlInput.disabled = state;
+      estado.textContent = state ? "Conectando…" : "";
+    }
+
+    function resetUI(){
+      //Limpiar fruta y marcador
+      fruta = null;
+      frutaDiv.hidden = true;
+
+      //Quitar jugadores
+      Object.values(jugadores).forEach(j => {
+        if (j.el && j.el.parentNode) j.el.parentNode.removeChild(j.el);
+      });
+      jugadores = {};
+      miId = null;
+      marcador.innerHTML = "";
+      estado.textContent = "";
+    }
+
+    function connect(url){
+      //Por si reintentas
+      if (socket && socket.readyState === WebSocket.OPEN){
+        try { socket.close(); } catch {}
+      }
+      resetUI();
+      setUIConnecting(true);
+
+      try{
+        socket = new WebSocket(url);
+      }catch(e){
+        setUIConnecting(false);
+        estado.textContent = "URL no válida.";
+        console.error(e);
+        return;
+      }
+
+      socket.addEventListener("open", () => {
+        estado.textContent = "Conectado. Esperando jugadores...";
+        setUIConnecting(true);
+        try {
+          const u = new URL(socket.url);
+          const puerto = u.port || (u.protocol === "wss:" ? "443" : "80");
+          console.log(`[CLIENTE] Conectado a ${u.hostname}:${puerto}`);
+        } catch { /* no-op */ }
+      });
+
+      socket.addEventListener("close", () => {
+        setUIConnecting(false);
+        console.log("[CLIENTE] Conexión cerrada.");
+        estado.textContent = "Desconectado del servidor.";
+      });
+
+      socket.addEventListener("error", () => {
+        setUIConnecting(false);
+        estado.textContent = "Error de conexión.";
+      });
+
+      socket.addEventListener("message", (ev) => {
+        let m;
+        try { m = JSON.parse(ev.data); } catch { return; }
+        if (!m || !m.tipo) return;
+        manejarMensaje(m);
+      });
+    }
+
+    btnConnect.addEventListener("click", () => {
+      const url = (urlInput.value || "").trim();
+      if (!url) {
+        estado.textContent = "Introduce una URL de WebSocket.";
+        return;
+      }
+      connect(url);
+    });
+
+    function enviar(obj){
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(obj));
+      }
+    }
+
+    //Renderizado de jugadores
+    function crearDivJugador(id){
+      let el = document.getElementById("jugador-" + id);
+      if (!el){
+        el = document.createElement("div");
+        el.id = "jugador-" + id;
+        el.className = "jugador";
+        el.textContent = id;
+        contenedor.appendChild(el);
+      }
+      if (String(id) === String(miId)) el.classList.add("yo");
+      return el;
+    }
+
+    function dibujarJugador(id){
+      const j = jugadores[id];
+      if (!j) return;
+      const el = j.el || crearDivJugador(id);
+      j.el = el;
+      el.style.transform = `translate(${j.x}px, ${j.y}px)`;
+    }
+
+    function eliminarJugador(id){
+      const j = jugadores[id];
+      if (j && j.el && j.el.parentNode) j.el.parentNode.removeChild(j.el);
+      delete jugadores[id];
+    }
+
+    //Marcador
+    function actualizarPuntuaciones(){
+      marcador.innerHTML = "";
+      Object.entries(jugadores)
+        .sort((a,b) => (b[1].puntos||0) - (a[1].puntos||0))
+        .forEach(([id, j]) => {
+          const chip = document.createElement("div");
+          chip.className = "chip";
+          chip.textContent = `ID ${id}: ${j.puntos||0} pts`;
+          marcador.appendChild(chip);
+        });
+    }
+
+    
+    function clampGrid(v){
+      if (v < 0) return 0;
+      if (v > MAX) return MAX;
+      return Math.round(v / CELL) * CELL;
+    }
+
+    function logJugadores(){
+      const todos = Object.entries(jugadores)
+        .map(([id, j]) => `ID ${id} -> (${j.x}, ${j.y})`)
+        .join(" | ");
+      if (todos) console.log(`[CLIENTE] Jugadores: ${todos}`);
+    }
+
+    //Mensajes del servidor
+    function manejarMensaje(m){
+      const d = m.datos;
+      switch (m.tipo){
+        case "new": {
+          if (!d) return;
+          if (miId === null){
+            miId = d.id;
+            estado.textContent = "Conectado. Tu ID: " + miId;
+            console.log(`[CLIENTE] Mi spawn -> ID ${miId} en (${d.x}, ${d.y})`);
+          }
+          if (!jugadores[d.id]) jugadores[d.id] = { x: d.x, y: d.y, dir: d.dir||"0", puntos: d.puntos||0 };
+          else Object.assign(jugadores[d.id], { x:d.x, y:d.y, dir:d.dir||"0", puntos:d.puntos||0 });
+          crearDivJugador(d.id);
+          dibujarJugador(d.id);
+          actualizarPuntuaciones();
+
+          //Cada vez que se conecte alguien, mostramos coordenadas de TODOS
+          logJugadores();
+          break;
+        }
+        case "mover": {
+          if (!d) return;
+          const id = d.id;
+          if (!jugadores[id]) jugadores[id] = { x: 0, y: 0, dir: "0", puntos: 0 };
+          jugadores[id].x = clampGrid(d.x);
+          jugadores[id].y = clampGrid(d.y);
+          jugadores[id].dir = d.dri || d.dir || "0";
+          dibujarJugador(id);
+          break;
+        }
+        case "score": {
+          if (!d) return;
+          const { id, puntos } = d;
+          if (!jugadores[id]) jugadores[id] = { x: 0, y: 0, dir: "0", puntos: 0 };
+          jugadores[id].puntos = puntos || 0;
+          actualizarPuntuaciones();
+          break;
+        }
+        case "fruit": {
+          if (!d) return;
+          fruta = { x:d.x, y:d.y };
+          frutaDiv.hidden = false;
+          frutaDiv.style.transform = `translate(${fruta.x}px, ${fruta.y}px)`;
+          console.log(`[CLIENTE] Fruta en (${fruta.x}, ${fruta.y})`); // <-- log fruta
+          break;
+        }
+        case "delete": {
+          eliminarJugador(d);
+          actualizarPuntuaciones();
+          logJugadores();
+          break;
+        }
+      }
+    }
+
+    //Control básico
+    const input = { x:0, y:0 };
+    addEventListener("keydown", (e) => {
+      if (["ArrowLeft","a","A"].includes(e.key)) input.x = -1;
+      if (["ArrowRight","d","D"].includes(e.key)) input.x = 1;
+      if (["ArrowUp","w","W"].includes(e.key)) input.y = -1;
+      if (["ArrowDown","s","S"].includes(e.key)) input.y = 0 ? input.y : 1;
+      if (["ArrowDown","s","S"].includes(e.key)) input.y = 1;
+    });
+    addEventListener("keyup", (e) => {
+      if (["ArrowLeft","a","A","ArrowRight","d","D"].includes(e.key)) input.x = 0;
+      if (["ArrowUp","w","W","ArrowDown","s","S"].includes(e.key)) input.y = 0;
+    });
+
+    function enviarMover(){
+      if (!socket || socket.readyState !== WebSocket.OPEN) return;
+      const me = jugadores[miId];
+      if (!me) return;
+      enviar({ tipo:"mover", datos:{ id:miId, x:me.x, y:me.y, dir:String(input.x)+","+String(input.y) } });
+    }
+
+    //Bucle simple para mover al jugador localmente y notificar
+    setInterval(() => {
+      if (!miId || !jugadores[miId]) return;
+      if (!socket || socket.readyState !== WebSocket.OPEN) return;
+      const me = jugadores[miId];
+      const speed = CELL; //movimiento a saltos de celda
+      if (input.x !== 0 || input.y !== 0){
+        me.x = clampGrid(me.x + input.x * speed);
+        me.y = clampGrid(me.y + input.y * speed);
+        dibujarJugador(miId);
+        enviarMover();
+        if (fruta && me.x === fruta.x && me.y === fruta.y){
+          enviar({ tipo:"comer", datos:{ x:me.x, y:me.y } });
+        }
+      }
+    }, 120);
+  </script>
+</body>
+</html>
