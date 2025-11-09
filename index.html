@@ -2,350 +2,371 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SNAKE ONLINE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SNAKE ONLINE - Cliente</title>
 
   <style>
-    :root{
-      --size: 500px;
-      --cell: 20px;
-    }
-    *{ box-sizing: border-box; }
-    body{
-      font-family: system-ui, Arial, sans-serif;
-      display:flex; flex-direction:column; align-items:center; gap:10px;
-      margin:20px; background:#f6f6f6; color:#222;
-    }
-    h1{ margin:0 0 8px 0; font-size:18px; }
-    #estado{ font-size:14px; color:#555; min-height:1.2em; }
-
-    /*Conexión*/
-    .connect-bar{
-      display:flex; gap:8px; align-items:center; flex-wrap:wrap;
-      background:#fff; border:1px solid #ddd; border-radius:10px; padding:8px 10px;
-    }
-    .connect-bar input[type="text"]{
-      width:360px; max-width:70vw; padding:8px 10px; border:1px solid #ccc; border-radius:8px;
-      font-family:monospace; font-size:12px;
-    }
-    .connect-bar button{
-      padding:8px 12px; border:1px solid #0a7; background:#12c993; color:#fff;
-      border-radius:10px; cursor:pointer; font-weight:600;
-    }
-    .connect-bar button[disabled]{ opacity:.6; cursor:not-allowed; }
-
-    #contenedor{
-      position:relative; width:var(--size); height:var(--size);
-      background:#111; border:2px solid #333; border-radius:8px; overflow:hidden;
-    }
-    /*Cuadrícula*/
-    .grid{
-      position:absolute; inset:0; background-image:
-        linear-gradient(to right, rgba(255,255,255,.04) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255,255,255,.04) 1px, transparent 1px);
-      background-size: 20px 20px; pointer-events:none;
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin: 20px;
+      background-color: #f6f6f6;
     }
 
-    /*JUGADOR*/
-    .jugador{
-      position:absolute; width:20px; height:20px; background:#32cd32;
-      border-radius:4px; display:flex; align-items:center; justify-content:center;
-      color:#fff; font-weight:700; font-size:12px; user-select:none;
-      text-shadow:0 1px 2px rgba(0,0,0,.6);
-    }
-    .yo{ background:#00cc66; box-shadow:0 0 8px rgba(0,255,120,.9); }
-
-    /*FRUTA*/
-    #fruta{
-      position:absolute; width:20px; height:20px;
-      background:#e74c3c; border-radius:4px;
-      box-shadow:0 0 8px rgba(231,76,60,.8);
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #145a32;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 10px;
     }
 
-    /*Marcador simple*/
-    #marcador{
-      display:flex; flex-wrap:wrap; gap:6px; max-width:var(--size);
-      font-size:13px; color:#333;
+    #panel {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      width: 500px;
+      justify-content: space-between;
     }
-    .chip{
-      background:#fff; border:1px solid #ddd; border-radius:999px;
-      padding:4px 8px;
+
+    #bloqueConectar {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    #textoServer {
+      width: 260px;
+      padding: 4px 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    #botonConectar {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      background-color: #145a32;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #botonConectar:hover {
+      background-color: #458b63;
+    }
+
+    #estado {
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    #juego {
+      position: relative;
+      width: 500px;
+      height: 500px;
+      border: 3px solid #8b4513;
+      background-color: #f4e4c1;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .jugador {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: #32cd32;
+      border-radius: 4px;
+    }
+
+    .yo {
+      background: #00ff66;
+      box-shadow: 0 0 6px #00ff66;
+    }
+
+    #fruta {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: #e74c3c;
+      border-radius: 50%;
+      display: none;
+      box-shadow: 0 0 4px #e74c3c;
+    }
+
+    #puntuaciones {
+      min-width: 180px;
+      font-size: 0.9rem;
+      color: #145a32;
+      font-weight: bold;
+      margin-top: 5px;
+      position: relative;
+      left: 35px;
+    }
+
+    #puntuaciones h3 {
+      margin: 0 0 4px 0;
+      font-size: 1rem;
+      text-decoration: underline;
+      color: #145a32;
+    }
+
+    .puntuacion-item {
+      margin: 2px 0;
     }
   </style>
 </head>
+
 <body>
-  <h1>Snake Online</h1>
+  <h1>SNAKE ONLINE</h1>
 
-  <!--Barra de conexión-->
-  <div class="connect-bar">
-    <label for="ws-url" style="font-weight:600;">Servidor:</label>
-    <input id="ws-url" type="text" spellcheck="false" value="https://snake-online-laura-nacho.onrender.com/" />
-    <button id="btn-connect">Conectar</button>
+  <div id="panel">
+    <div id="bloqueConectar">
+      <!-- 👇 Cambiado: URL por defecto de Render -->
+      <input id="textoServer" value="https://snake-online-laura-nacho.onrender.com/" />
+      <button id="botonConectar">Conectar</button>
+    </div>
+    <div id="estado">Desconectado</div>
   </div>
 
-  <div id="estado"></div>
-
-  <div id="contenedor" aria-label="tablero">
-    <div class="grid" aria-hidden="true"></div>
-    <div id="fruta" hidden></div>
+  <div id="juego">
+    <div id="fruta"></div>
   </div>
 
-  <div id="marcador" title="Puntuaciones"></div>
+  <div id="puntuaciones">
+    <h3>Puntuaciones</h3>
+    <div id="listaPuntos"></div>
+  </div>
 
   <script>
     const SIZE = 500;
     const CELL = 20;
     const MAX = SIZE - CELL;
 
-    //Estado Cliente
-    const contenedor = document.getElementById("contenedor");
-    const frutaDiv = document.getElementById("fruta");
-    const estado = document.getElementById("estado");
-    const marcador = document.getElementById("marcador");
-
-    const urlInput = document.getElementById("ws-url");
-    const btnConnect = document.getElementById("btn-connect");
-
-    /*
-    //Prefijar URL por defecto
-    const defaultHost = location.hostname || "localhost";
-    const defaultUrl = (location.protocol === "https:" ? "wss://" : "ws://") + defaultHost + ":8080";
-    urlInput.value = defaultUrl;
-    */
-
-    //jugadores:
-    let jugadores = {};
-    let miId = null;
-    let fruta = null;
     let socket = null;
+    let miId = null;
+    let miDireccion = "0";
+    const jugadores = {};
+    let fruta = null;
 
-    function setUIConnecting(state){
-      btnConnect.disabled = state;
-      urlInput.disabled = state;
-      estado.textContent = state ? "Conectando…" : "";
-    }
+    const contenedor = document.getElementById("juego");
+    const frutaDiv = document.getElementById("fruta");
+    const listaPuntos = document.getElementById("listaPuntos");
+    const botonConectar = document.getElementById("botonConectar");
+    const textoServer = document.getElementById("textoServer");
+    const estado = document.getElementById("estado");
 
-    function resetUI(){
-      //Limpiar fruta y marcador
-      fruta = null;
-      frutaDiv.hidden = true;
+    botonConectar.addEventListener("click", () => {
+      let url = textoServer.value.trim();
+      if (!url) return;
 
-      //Quitar jugadores
-      Object.values(jugadores).forEach(j => {
-        if (j.el && j.el.parentNode) j.el.parentNode.removeChild(j.el);
-      });
-      jugadores = {};
-      miId = null;
-      marcador.innerHTML = "";
-      estado.textContent = "";
-    }
-
-    function connect(url){
-      //Por si reintentas
-      if (socket && socket.readyState === WebSocket.OPEN){
-        try { socket.close(); } catch {}
+      // ⚙️ Normaliza: si estás en HTTPS, fuerza WSS
+      if (location.protocol === "https:" && url.startsWith("ws://")) {
+        url = "wss://" + url.slice(5);
       }
-      resetUI();
-      setUIConnecting(true);
 
-      try{
-        socket = new WebSocket(url);
-      }catch(e){
-        setUIConnecting(false);
-        estado.textContent = "URL no válida.";
-        console.error(e);
-        return;
-      }
+      if (socket) socket.close();
+
+      limpiarEscena();
+      estado.textContent = "Conectando...";
+      socket = new WebSocket(url);
 
       socket.addEventListener("open", () => {
         estado.textContent = "Conectado. Esperando jugadores...";
-        setUIConnecting(true);
-        try {
-          const u = new URL(socket.url);
-          const puerto = u.port || (u.protocol === "wss:" ? "443" : "80");
-          console.log(`[CLIENTE] Conectado a ${u.hostname}:${puerto}`);
-        } catch { /* no-op */ }
+        miId = null;
       });
 
       socket.addEventListener("close", () => {
-        setUIConnecting(false);
-        console.log("[CLIENTE] Conexión cerrada.");
-        estado.textContent = "Desconectado del iidor.";
+        estado.textContent = "Desconectado";
+        miId = null;
+        limpiarEscena();
       });
 
       socket.addEventListener("error", () => {
-        setUIConnecting(false);
-        estado.textContent = "Error de conexión.";
+        estado.textContent = "Error en la conexión";
       });
 
-      socket.addEventListener("message", (ev) => {
-        let m;
-        try { m = JSON.parse(ev.data); } catch { return; }
-        if (!m || !m.tipo) return;
+      socket.addEventListener("message", (event) => {
+        const m = parsearMensaje(event.data);
+        if (!m || typeof m.tipo !== "string") return;
         manejarMensaje(m);
       });
-    }
-
-    btnConnect.addEventListener("click", () => {
-      const url = (urlInput.value || "").trim();
-      if (!url) {
-        estado.textContent = "Introduce una URL de WebSocket.";
-        return;
-      }
-      connect(url);
     });
 
-    function enviar(obj){
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify(obj));
-      }
+    function parsearMensaje(raw) {
+      try { return JSON.parse(raw); } catch { return null; }
     }
 
-    //Renderizado de jugadores
-    function crearDivJugador(id){
-      let el = document.getElementById("jugador-" + id);
-      if (!el){
-        el = document.createElement("div");
-        el.id = "jugador-" + id;
-        el.className = "jugador";
-        el.textContent = id;
-        contenedor.appendChild(el);
-      }
-      if (String(id) === String(miId)) el.classList.add("yo");
-      return el;
-    }
-
-    function dibujarJugador(id){
-      const j = jugadores[id];
-      if (!j) return;
-      const el = j.el || crearDivJugador(id);
-      j.el = el;
-      el.style.transform = `translate(${j.x}px, ${j.y}px)`;
-    }
-
-    function eliminarJugador(id){
-      const j = jugadores[id];
-      if (j && j.el && j.el.parentNode) j.el.parentNode.removeChild(j.el);
-      delete jugadores[id];
-    }
-
-    //Marcador
-    function actualizarPuntuaciones(){
-      marcador.innerHTML = "";
-      Object.entries(jugadores)
-        .sort((a,b) => (b[1].puntos||0) - (a[1].puntos||0))
-        .forEach(([id, j]) => {
-          const chip = document.createElement("div");
-          chip.className = "chip";
-          chip.textContent = `ID ${id}: ${j.puntos||0} pts`;
-          marcador.appendChild(chip);
-        });
-    }
-
-    
-    function clampGrid(v){
-      if (v < 0) return 0;
-      if (v > MAX) return MAX;
-      return Math.round(v / CELL) * CELL;
-    }
-
-    function logJugadores(){
-      const todos = Object.entries(jugadores)
-        .map(([id, j]) => `ID ${id} -> (${j.x}, ${j.y})`)
-        .join(" | ");
-      if (todos) console.log(`[CLIENTE] Jugadores: ${todos}`);
-    }
-
-    //Mensajes del servidor
-    function manejarMensaje(m){
-      const d = m.datos;
-      switch (m.tipo){
-        case "new": {
-          if (!d) return;
-          if (miId === null){
-            miId = d.id;
+    function manejarMensaje(m) {
+      const datos = m.datos;
+      switch (m.tipo) {
+        case "new":
+          if (!datos) return;
+          if (miId === null) {
+            miId = datos.id;
             estado.textContent = "Conectado. Tu ID: " + miId;
-            console.log(`[CLIENTE] Mi spawn -> ID ${miId} en (${d.x}, ${d.y})`);
           }
-          if (!jugadores[d.id]) jugadores[d.id] = { x: d.x, y: d.y, dir: d.dir||"0", puntos: d.puntos||0 };
-          else Object.assign(jugadores[d.id], { x:d.x, y:d.y, dir:d.dir||"0", puntos:d.puntos||0 });
-          crearDivJugador(d.id);
-          dibujarJugador(d.id);
-          actualizarPuntuaciones();
-
-          //Cada vez que se conecte alguien, mostramos coordenadas de TODOS
-          logJugadores();
+          crearOActualizarJugador(datos);
           break;
-        }
-        case "mover": {
-          if (!d) return;
-          const id = d.id;
-          if (!jugadores[id]) jugadores[id] = { x: 0, y: 0, dir: "0", puntos: 0 };
-          jugadores[id].x = clampGrid(d.x);
-          jugadores[id].y = clampGrid(d.y);
-          jugadores[id].dir = d.dri || d.dir || "0";
+        case "mover":
+          if (!datos) return;
+          const id = datos.id;
+          if (!jugadores[id]) {
+            jugadores[id] = { x: 0, y: 0, dir: "0", puntos: 0 };
+            crearDivJugador(id);
+          }
+          jugadores[id].x = datos.x;
+          jugadores[id].y = datos.y;
+          jugadores[id].dir = datos.dri || datos.dir || "0";
           dibujarJugador(id);
           break;
-        }
-        case "score": {
-          if (!d) return;
-          const { id, puntos } = d;
-          if (!jugadores[id]) jugadores[id] = { x: 0, y: 0, dir: "0", puntos: 0 };
-          jugadores[id].puntos = puntos || 0;
+        case "score":
+          if (!datos) return;
+          const { id: idScore, puntos } = datos;
+          if (!jugadores[idScore]) {
+            jugadores[idScore] = { x: 0, y: 0, dir: "0", puntos: 0 };
+            crearDivJugador(idScore);
+          }
+          jugadores[idScore].puntos = puntos || 0;
           actualizarPuntuaciones();
           break;
-        }
-        case "fruit": {
-          if (!d) return;
-          fruta = { x:d.x, y:d.y };
-          frutaDiv.hidden = false;
-          frutaDiv.style.transform = `translate(${fruta.x}px, ${fruta.y}px)`;
-          console.log(`[CLIENTE] Fruta en (${fruta.x}, ${fruta.y})`); // <-- log fruta
+        case "fruit":
+          if (!datos) return;
+          fruta = { x: datos.x, y: datos.y };
+          dibujarFruta();
           break;
-        }
-        case "delete": {
-          eliminarJugador(d);
-          actualizarPuntuaciones();
-          logJugadores();
+        case "delete":
+          eliminarJugador(datos);
           break;
-        }
       }
     }
 
-    //Control básico
-    const input = { x:0, y:0 };
-    addEventListener("keydown", (e) => {
-      if (["ArrowLeft","a","A"].includes(e.key)) input.x = -1;
-      if (["ArrowRight","d","D"].includes(e.key)) input.x = 1;
-      if (["ArrowUp","w","W"].includes(e.key)) input.y = -1;
-      if (["ArrowDown","s","S"].includes(e.key)) input.y = 0 ? input.y : 1;
-      if (["ArrowDown","s","S"].includes(e.key)) input.y = 1;
-    });
-    addEventListener("keyup", (e) => {
-      if (["ArrowLeft","a","A","ArrowRight","d","D"].includes(e.key)) input.x = 0;
-      if (["ArrowUp","w","W","ArrowDown","s","S"].includes(e.key)) input.y = 0;
-    });
-
-    function enviarMover(){
-      if (!socket || socket.readyState !== WebSocket.OPEN) return;
-      const me = jugadores[miId];
-      if (!me) return;
-      enviar({ tipo:"mover", datos:{ id:miId, x:me.x, y:me.y, dir:String(input.x)+","+String(input.y) } });
+    function crearDivJugador(id) {
+      let div = document.getElementById("jugador-" + id);
+      if (!div) {
+        div = document.createElement("div");
+        div.id = "jugador-" + id;
+        div.className = "jugador";
+        contenedor.appendChild(div);
+      }
+      if (String(id) === String(miId)) {
+        div.classList.add("yo");
+      }
+      return div;
     }
 
-    //Bucle simple para mover al jugador localmente y notificar
-    setInterval(() => {
-      if (!miId || !jugadores[miId]) return;
-      if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    function crearOActualizarJugador(info) {
+      const { id, x, y, dir, puntos } = info;
+      if (!jugadores[id]) {
+        jugadores[id] = { x: x, y: y, dir: dir, puntos: puntos || 0 };
+        crearDivJugador(id);
+      } else {
+        jugadores[id].x = x;
+        jugadores[id].y = y;
+        jugadores[id].dir = dir;
+        jugadores[id].puntos = puntos || jugadores[id].puntos;
+      }
+      dibujarJugador(id);
+      actualizarPuntuaciones();
+    }
+
+    function dibujarJugador(id) {
+      const j = jugadores[id];
+      const div = document.getElementById("jugador-" + id);
+      if (!j || !div) return;
+      div.style.left = j.x + "px";
+      div.style.top = j.y + "px";
+    }
+
+    function eliminarJugador(id) {
+      delete jugadores[id];
+      const div = document.getElementById("jugador-" + id);
+      if (div) div.remove();
+      actualizarPuntuaciones();
+    }
+
+    function limpiarEscena() {
+      for (const id in jugadores) eliminarJugador(id);
+      fruta = null;
+      frutaDiv.style.display = "none";
+      listaPuntos.innerHTML = "";
+    }
+
+    function dibujarFruta() {
+      if (!fruta) return;
+      frutaDiv.style.left = fruta.x + "px";
+      frutaDiv.style.top = fruta.y + "px";
+      frutaDiv.style.display = "block";
+    }
+
+    function actualizarPuntuaciones() {
+      listaPuntos.innerHTML = "";
+      const arr = Object.entries(jugadores).map(([id, j]) => ({ id, puntos: j.puntos || 0 }));
+      arr.sort((a, b) => b.puntos - a.puntos);
+      for (const j of arr) {
+        const div = document.createElement("div");
+        div.className = "puntuacion-item";
+        div.textContent = `Jugador ${j.id}: ${j.puntos}`;
+        if (String(j.id) === String(miId)) div.style.fontWeight = "bold";
+        listaPuntos.appendChild(div);
+      }
+    }
+
+    document.addEventListener("keydown", (ev) => {
+      if (!socket || socket.readyState !== WebSocket.OPEN || miId === null) return;
+      const k = ev.key.toLowerCase();
+      let nueva = miDireccion;
+      if (["w","a","s","d"].includes(k)) nueva = k;
+      if (nueva !== miDireccion) {
+        miDireccion = nueva;
+        const me = jugadores[miId];
+        if (me) { me.dir = miDireccion; enviarMover(); }
+      }
+    });
+
+    document.addEventListener("keyup", (ev) => {
+      if (!socket || socket.readyState !== WebSocket.OPEN || miId === null) return;
+      const k = ev.key.toLowerCase();
+      if (["w","a","s","d"].includes(k)) {
+        miDireccion = "0";
+        const me = jugadores[miId];
+        if (me) { me.dir = miDireccion; enviarMover(); }
+      }
+    });
+
+    function enviarMover() {
       const me = jugadores[miId];
-      const speed = CELL; //movimiento a saltos de celda
-      if (input.x !== 0 || input.y !== 0){
-        me.x = clampGrid(me.x + input.x * speed);
-        me.y = clampGrid(me.y + input.y * speed);
-        dibujarJugador(miId);
+      if (!me) return;
+      const msg = { tipo: "mover", datos: { dir: miDireccion, x: me.x, y: me.y } };
+      socket.send(JSON.stringify(msg));
+    }
+
+    function enviarComer(x, y) {
+      const msg = { tipo: "comer", datos: { x, y } };
+      socket.send(JSON.stringify(msg));
+    }
+
+    setInterval(() => {
+      if (!socket || socket.readyState !== WebSocket.OPEN) return;
+      for (const id in jugadores) {
+        const j = jugadores[id];
+        if (j.dir === "a") j.x -= CELL;
+        else if (j.dir === "d") j.x += CELL;
+        else if (j.dir === "w") j.y -= CELL;
+        else if (j.dir === "s") j.y += CELL;
+        j.x = Math.max(0, Math.min(MAX, j.x));
+        j.y = Math.max(0, Math.min(MAX, j.y));
+        dibujarJugador(id);
+      }
+      if (miId && jugadores[miId]) {
+        const me = jugadores[miId];
         enviarMover();
-        if (fruta && me.x === fruta.x && me.y === fruta.y){
-          enviar({ tipo:"comer", datos:{ x:me.x, y:me.y } });
+        if (fruta && me.x === fruta.x && me.y === fruta.y) {
+          enviarComer(me.x, me.y);
         }
       }
     }, 120);
